@@ -5,7 +5,7 @@ import { createClient } from "@/lib/supabase/client";
 import type { OperacaoEquipe, OperacaoColuna, ContratoServico } from "@/lib/types";
 import { OPERACAO_COLUNAS } from "@/lib/constants";
 import { brl, addDays } from "@/lib/format";
-import { syncContratoGoogle } from "@/lib/google/client";
+import { syncContratoGoogle, deleteEventoGoogle } from "@/lib/google/client";
 import { Button, Input, Modal, Select, Textarea } from "@/components/ui";
 import type { OpCardFull } from "./OperacaoCard";
 
@@ -110,6 +110,21 @@ export function OperacaoDetalhe({
   async function salvarAnotacoes() {
     await supabase.from("operacao_cards").update({ anotacoes }).eq("id", card.id);
     onChange();
+  }
+
+  async function excluir() {
+    const nome = c ? `${c.noivo1_nome} & ${c.noivo2_nome}` : "este card";
+    if (!confirm(`Excluir "${nome}"?\n\nRemove o card, o contrato e os lançamentos a receber vinculados. Esta ação não pode ser desfeita.`)) return;
+    if (c?.google_event_id) await deleteEventoGoogle(c.google_event_id);
+    if (c) {
+      // apagar o contrato remove em cascata: card de operação, serviços,
+      // equipe e contas a receber.
+      await supabase.from("contratos").delete().eq("id", c.id);
+    } else {
+      await supabase.from("operacao_cards").delete().eq("id", card.id);
+    }
+    onChange();
+    onClose();
   }
 
   async function addPessoa() {
@@ -269,6 +284,16 @@ export function OperacaoDetalhe({
               <strong>Do comercial:</strong> {c.anotacoes_operacao}
             </p>
           )}
+        </div>
+
+        {/* Excluir */}
+        <div className="flex items-center justify-between border-t border-neutral-100 pt-3">
+          <span className="text-xs text-neutral-400">
+            Excluir remove o card, o contrato e os lançamentos a receber vinculados.
+          </span>
+          <Button type="button" variant="ghost" onClick={excluir} className="text-red-600 hover:bg-red-50">
+            Excluir card
+          </Button>
         </div>
       </div>
     </Modal>

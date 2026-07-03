@@ -9,3 +9,16 @@ export function syncContratoGoogle(contratoId: string) {
     /* silencioso */
   });
 }
+
+// Remove o evento no Google. Aguarda a resposta para poder encadear a exclusão.
+export async function deleteEventoGoogle(googleEventId: string) {
+  try {
+    await fetch("/api/google/delete", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ googleEventId }),
+    });
+  } catch {
+    /* silencioso */
+  }
+}

@@ -120,6 +120,13 @@ export function LeadDetalhe({
     onClose();
   }
 
+  async function excluir() {
+    if (!confirm(`Excluir permanentemente o lead "${form.nome_casal}"?\n\nEsta ação não pode ser desfeita.`)) return;
+    await supabase.from("leads").delete().eq("id", lead.id);
+    onChange();
+    onClose();
+  }
+
   const TabBtn = ({ id, children }: { id: Tab; children: React.ReactNode }) => (
     <button
       onClick={() => setTab(id)}
@@ -237,7 +244,10 @@ export function LeadDetalhe({
           </div>
 
           <div className="mt-2 flex items-center justify-between border-t border-neutral-100 pt-3">
-            <Button type="button" variant="ghost" onClick={arquivar}>Arquivar</Button>
+            <div className="flex gap-1">
+              <Button type="button" variant="ghost" onClick={arquivar}>Arquivar</Button>
+              <Button type="button" variant="ghost" onClick={excluir} className="text-red-600 hover:bg-red-50">Excluir</Button>
+            </div>
             <div className="flex gap-2">
               <Button type="button" variant="primary" onClick={() => onPassagem({ ...form })} className="bg-green-600 hover:bg-green-500">
                 🤝 Passagem de bastão
