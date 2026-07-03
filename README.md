@@ -60,7 +60,37 @@ mensagens**. Especificação completa em [Sistema_MEMO_PRD.md](./Sistema_MEMO_PR
    lucro, dividido 40/40/20 ou em partes iguais).
 
 5. **Agenda** — calendário mensal + lista, consolidando eventos fechados e
-   negociações em aberto.
+   negociações em aberto. Sincroniza com o **Google Agenda** (ver abaixo).
+
+## Integração com o Google Agenda (opcional)
+
+Sincronização de **dois sentidos** com um **calendário único da MEMO**, via
+Service Account (sem cada pessoa precisar logar). Só eventos **fechados**
+(contratos) são enviados; eventos criados direto no Google aparecem na agenda
+do MEMO marcados em azul.
+
+Setup:
+
+1. No [Google Cloud Console](https://console.cloud.google.com): crie um projeto e
+   ative a **Google Calendar API**.
+2. Crie uma **Service Account** e gere uma **chave JSON**.
+3. No Google Agenda, abra as configurações do calendário da MEMO →
+   **Compartilhar com pessoas específicas** → adicione o e-mail da service
+   account com permissão **"Fazer alterações nos eventos"**.
+4. Copie o **ID do calendário** (Configurações → "ID do calendário").
+5. Preencha no `.env.local` (nunca com prefixo `NEXT_PUBLIC`):
+
+   ```
+   GOOGLE_CLIENT_EMAIL=...@...iam.gserviceaccount.com
+   GOOGLE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----\n"
+   GOOGLE_CALENDAR_ID=...@group.calendar.google.com
+   ```
+
+6. Rode o SQL de `supabase/migrations/0003_google_calendar.sql`.
+7. Reinicie o servidor. Na Agenda aparece o botão **↻ Sincronizar Google**.
+
+Sem essas variáveis, a integração fica desativada e a agenda funciona só com os
+dados do MEMO (nenhum erro).
 
 ## Estrutura
 

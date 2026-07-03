@@ -76,6 +76,8 @@ export type Contrato = {
   condicao_pagamento: string | null;
   anotacoes_operacao: string | null;
   split_modo: SplitModo;
+  google_event_id: string | null;
+  google_synced_at: string | null;
   created_at: string;
 };
 
@@ -155,7 +157,7 @@ export type FinConfig = {
 
 export type AgendaItem = {
   data: string;
-  tipo: "fechado" | "negociacao";
+  tipo: "fechado" | "negociacao" | "google";
   titulo: string;
   ref_id: string;
   local: string | null;

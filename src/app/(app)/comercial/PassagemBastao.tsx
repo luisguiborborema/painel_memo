@@ -6,6 +6,7 @@ import type { Lead } from "@/lib/types";
 import { SERVICO_MAP } from "@/lib/constants";
 import { OPERACAO_CHECKLISTS } from "@/lib/constants";
 import { brl, addDays } from "@/lib/format";
+import { syncContratoGoogle } from "@/lib/google/client";
 import { Button, Input, Modal, Select, Textarea } from "@/components/ui";
 
 type ServicoRow = { nome: string; valor: string };
@@ -154,6 +155,9 @@ export function PassagemBastao({
       .from("leads")
       .update({ coluna_atual: "fechamento", arquivado: true })
       .eq("id", lead.id);
+
+    // 6. Sincroniza com o Google Agenda (se configurado)
+    syncContratoGoogle(contrato.id);
 
     setSaving(false);
     onDone();

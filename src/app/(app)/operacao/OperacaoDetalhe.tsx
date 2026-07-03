@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/client";
 import type { OperacaoEquipe, OperacaoColuna, ContratoServico } from "@/lib/types";
 import { OPERACAO_COLUNAS } from "@/lib/constants";
 import { brl, addDays } from "@/lib/format";
+import { syncContratoGoogle } from "@/lib/google/client";
 import { Button, Input, Modal, Select, Textarea } from "@/components/ui";
 import type { OpCardFull } from "./OperacaoCard";
 
@@ -61,6 +62,7 @@ export function OperacaoDetalhe({
         valor_total: Number(dados.valor_total) || 0,
       })
       .eq("id", c.id);
+    syncContratoGoogle(c.id); // atualiza o evento no Google Agenda
     setSalvandoDados(false);
     onChange();
   }
