@@ -69,10 +69,5 @@ export const OPERACAO_CHECKLISTS: Record<string, { label: string; done: boolean 
   ],
 };
 
-// Split de lucro
-export const SPLIT_IMPOSTOS = 0.12; // 12% impostos
-export const SPLIT_CAIXA = 0.1; // 10% caixa da empresa
-export const SPLIT_SOCIOS = {
-  padrao: { Flávio: 0.4, Caio: 0.4, Iago: 0.2 },
-  igual: { Flávio: 1 / 3, Caio: 1 / 3, Iago: 1 / 3 },
-};
+// Parâmetros de split (imposto, caixa, sócios) são configuráveis em runtime —
+// ver src/lib/split.ts (FIN_CONFIG_DEFAULT) e a tabela fin_config no Supabase.

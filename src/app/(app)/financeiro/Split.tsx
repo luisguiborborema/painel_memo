@@ -1,26 +1,14 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
-import type { Contrato } from "@/lib/types";
-import { SPLIT_IMPOSTOS, SPLIT_CAIXA, SPLIT_SOCIOS } from "@/lib/constants";
+import type { Contrato, SocioConfig } from "@/lib/types";
+import { calcSplit, FIN_CONFIG_DEFAULT } from "@/lib/split";
 import { brl, formatData } from "@/lib/format";
+import { Button, Input } from "@/components/ui";
 
 type EquipeMini = { valor: number; is_freelancer: boolean };
 type OpMini = { contrato_id: string; operacao_equipe: EquipeMini[] };
-
-function calcSplit(receita: number, custoFree: number, modo: "padrao" | "igual") {
-  const impostos = receita * SPLIT_IMPOSTOS;
-  const caixa = receita * SPLIT_CAIXA;
-  const lucro = receita - impostos - caixa - custoFree;
-  const socios = SPLIT_SOCIOS[modo];
-  const distrib = Object.entries(socios).map(([nome, pct]) => ({
-    nome,
-    pct,
-    valor: lucro * pct,
-  }));
-  return { impostos, caixa, lucro, distrib };
-}
 
 export function Split() {
   const supabase = createClient();
@@ -28,11 +16,19 @@ export function Split() {
   const [freePorContrato, setFreePorContrato] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
 
+  // parâmetros editáveis (com fallback nos defaults)
+  const [imposto, setImposto] = useState(String(FIN_CONFIG_DEFAULT.imposto_pct));
+  const [caixa, setCaixa] = useState(String(FIN_CONFIG_DEFAULT.caixa_pct));
+  const [socios, setSocios] = useState<SocioConfig[]>(FIN_CONFIG_DEFAULT.socios);
+  const [salvo, setSalvo] = useState(false);
+  const [salvando, setSalvando] = useState(false);
+
   useEffect(() => {
     (async () => {
-      const [{ data: cs }, { data: ops }] = await Promise.all([
+      const [{ data: cs }, { data: ops }, { data: cfg }] = await Promise.all([
         supabase.from("contratos").select("*").order("created_at", { ascending: false }),
         supabase.from("operacao_cards").select("contrato_id, operacao_equipe(valor, is_freelancer)"),
+        supabase.from("fin_config").select("*").eq("id", 1).maybeSingle(),
       ]);
       const map: Record<string, number> = {};
       for (const op of (ops as OpMini[]) ?? []) {
@@ -43,29 +39,125 @@ export function Split() {
       }
       setContratos((cs as Contrato[]) ?? []);
       setFreePorContrato(map);
+      if (cfg) {
+        setImposto(String(cfg.imposto_pct));
+        setCaixa(String(cfg.caixa_pct));
+        if (Array.isArray(cfg.socios) && cfg.socios.length) setSocios(cfg.socios);
+      }
       setLoading(false);
     })();
   }, []); // eslint-disable-line
+
+  const cfg = useMemo(
+    () => ({ imposto_pct: Number(imposto) || 0, caixa_pct: Number(caixa) || 0, socios }),
+    [imposto, caixa, socios]
+  );
+  const totalSociosPct = socios.reduce((s, x) => s + (Number(x.pct) || 0), 0);
+
+  function setSocio(i: number, patch: Partial<SocioConfig>) {
+    setSocios((ss) => ss.map((s, idx) => (idx === i ? { ...s, ...patch } : s)));
+  }
+  function addSocio() {
+    setSocios((ss) => [...ss, { nome: "Novo sócio", pct: 0 }]);
+  }
+  function rmSocio(i: number) {
+    setSocios((ss) => ss.filter((_, idx) => idx !== i));
+  }
+
+  async function salvarConfig() {
+    setSalvando(true);
+    await supabase.from("fin_config").upsert({
+      id: 1,
+      imposto_pct: Number(imposto) || 0,
+      caixa_pct: Number(caixa) || 0,
+      socios: socios.map((s) => ({ nome: s.nome, pct: Number(s.pct) || 0 })),
+    });
+    setSalvando(false);
+    setSalvo(true);
+    setTimeout(() => setSalvo(false), 1500);
+  }
 
   if (loading) return <p className="text-sm text-neutral-400">Carregando...</p>;
 
   return (
     <div className="flex flex-col gap-4">
+      {/* Parâmetros editáveis */}
+      <div className="rounded-xl border border-neutral-200 bg-white p-4">
+        <div className="mb-3 flex items-center justify-between">
+          <span className="text-sm font-semibold text-neutral-700">Parâmetros de cálculo</span>
+          <div className="flex items-center gap-2">
+            {salvo && <span className="text-xs text-green-600">✓ Salvo como padrão</span>}
+            <Button size="sm" onClick={salvarConfig} disabled={salvando}>
+              {salvando ? "Salvando..." : "Salvar como padrão"}
+            </Button>
+          </div>
+        </div>
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <label className="flex flex-col gap-1 text-sm">
+            <span className="font-medium text-neutral-600">Imposto (%)</span>
+            <div className="flex items-center rounded-lg border border-neutral-300 px-2 focus-within:border-neutral-900">
+              <input type="number" step="0.1" value={imposto} onChange={(e) => setImposto(e.target.value)} className="w-full px-1 py-2 text-sm outline-none" />
+              <span className="text-xs text-neutral-400">%</span>
+            </div>
+          </label>
+          <label className="flex flex-col gap-1 text-sm">
+            <span className="font-medium text-neutral-600">Caixa da empresa (%)</span>
+            <div className="flex items-center rounded-lg border border-neutral-300 px-2 focus-within:border-neutral-900">
+              <input type="number" step="0.1" value={caixa} onChange={(e) => setCaixa(e.target.value)} className="w-full px-1 py-2 text-sm outline-none" />
+              <span className="text-xs text-neutral-400">%</span>
+            </div>
+          </label>
+        </div>
+
+        <div className="mt-3">
+          <div className="mb-1.5 flex items-center justify-between">
+            <span className="text-sm font-medium text-neutral-600">Distribuição entre sócios</span>
+            <div className="flex items-center gap-2">
+              <span className={`text-xs font-medium ${Math.abs(totalSociosPct - 100) < 0.01 ? "text-green-600" : "text-amber-600"}`}>
+                Soma: {totalSociosPct.toFixed(1).replace(".0", "")}%
+              </span>
+              <Button size="sm" variant="subtle" onClick={addSocio}>+ Sócio</Button>
+            </div>
+          </div>
+          <div className="flex flex-col gap-2">
+            {socios.map((s, i) => (
+              <div key={i} className="flex items-center gap-2">
+                <input
+                  value={s.nome}
+                  onChange={(e) => setSocio(i, { nome: e.target.value })}
+                  className="flex-1 rounded-lg border border-neutral-300 px-3 py-2 text-sm outline-none focus:border-neutral-900"
+                />
+                <div className="flex items-center rounded-lg border border-neutral-300 px-2 focus-within:border-neutral-900">
+                  <input type="number" step="0.1" value={s.pct} onChange={(e) => setSocio(i, { pct: Number(e.target.value) })} className="w-20 px-1 py-2 text-sm outline-none" />
+                  <span className="text-xs text-neutral-400">%</span>
+                </div>
+                <button onClick={() => rmSocio(i)} className="text-neutral-300 hover:text-red-500">✕</button>
+              </div>
+            ))}
+          </div>
+          {Math.abs(totalSociosPct - 100) >= 0.01 && (
+            <p className="mt-1.5 text-[11px] text-amber-600">
+              A soma dos sócios não fecha 100% — no modo “padrão” o lucro será distribuído exatamente por esses percentuais.
+            </p>
+          )}
+        </div>
+      </div>
+
       <p className="rounded-lg bg-blue-50 px-3 py-2 text-xs text-blue-700 border border-blue-200">
-        Estimativa <strong>por evento</strong> (12% de imposto como aproximação por contrato). A
-        cascata: receita − 12% impostos − 10% caixa − custo de freelancers = lucro líquido.
-        Para fechamento fiscal, o imposto real incide sobre o faturamento mensal (ver aba Pagar).
+        Cascata por evento: receita − imposto − caixa − custo de freelancers = lucro líquido.
+        Os valores acima recalculam todos os eventos ao vivo. Cada contrato usa seu modo
+        (padrão = percentuais acima · iguais = divisão igual entre os sócios).
       </p>
 
       {contratos.map((c) => {
         const custoFree = freePorContrato[c.id] ?? 0;
-        const { impostos, caixa, lucro, distrib } = calcSplit(Number(c.valor_total), custoFree, c.split_modo);
+        const { impostos, caixa: caixaV, lucro, distrib } = calcSplit(Number(c.valor_total), custoFree, cfg, c.split_modo);
         return (
           <div key={c.id} className="rounded-xl border border-neutral-200 bg-white p-4">
             <div className="mb-3 flex items-center justify-between">
               <div>
                 <div className="font-semibold text-neutral-800">{c.noivo1_nome} & {c.noivo2_nome}</div>
-                <div className="text-xs text-neutral-400">{formatData(c.data_evento)} · {c.split_modo === "padrao" ? "40/40/20" : "partes iguais"}</div>
+                <div className="text-xs text-neutral-400">{formatData(c.data_evento)} · {c.split_modo === "padrao" ? "percentuais" : "partes iguais"}</div>
               </div>
               <div className="text-right">
                 <div className="text-xs text-neutral-400">Lucro líquido</div>
@@ -73,17 +165,17 @@ export function Split() {
               </div>
             </div>
 
-            <div className="grid grid-cols-4 gap-2 border-b border-neutral-100 pb-3 text-sm">
+            <div className="grid grid-cols-2 gap-2 border-b border-neutral-100 pb-3 text-sm sm:grid-cols-4">
               <Linha label="Receita" v={brl(c.valor_total)} />
-              <Linha label="− Impostos (12%)" v={brl(impostos)} neg />
-              <Linha label="− Caixa (10%)" v={brl(caixa)} neg />
+              <Linha label={`− Impostos (${cfg.imposto_pct}%)`} v={brl(impostos)} neg />
+              <Linha label={`− Caixa (${cfg.caixa_pct}%)`} v={brl(caixaV)} neg />
               <Linha label="− Freelancers" v={brl(custoFree)} neg />
             </div>
 
-            <div className="mt-3 grid grid-cols-3 gap-2">
+            <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3">
               {distrib.map((d) => (
                 <div key={d.nome} className="rounded-lg bg-neutral-50 p-3">
-                  <div className="text-xs text-neutral-400">{d.nome} · {(d.pct * 100).toFixed(0).replace(".0", "")}%</div>
+                  <div className="text-xs text-neutral-400">{d.nome} · {Number(d.pct.toFixed(1))}%</div>
                   <div className="text-base font-bold text-neutral-800">{brl(d.valor)}</div>
                 </div>
               ))}

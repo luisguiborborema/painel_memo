@@ -143,6 +143,16 @@ export type MsgTemplate = {
   updated_at: string;
 };
 
+export type SocioConfig = { nome: string; pct: number };
+
+export type FinConfig = {
+  id: number;
+  imposto_pct: number;
+  caixa_pct: number;
+  socios: SocioConfig[];
+  updated_at: string;
+};
+
 export type AgendaItem = {
   data: string;
   tipo: "fechado" | "negociacao";

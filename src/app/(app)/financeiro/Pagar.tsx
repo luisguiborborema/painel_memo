@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import type { FinPagar, PagarCategoria, FinReceber } from "@/lib/types";
-import { SPLIT_IMPOSTOS } from "@/lib/constants";
+import { FIN_CONFIG_DEFAULT } from "@/lib/split";
 import { brl, formatData, parseDate, toISODate } from "@/lib/format";
 import { Button, Input, Modal, Select } from "@/components/ui";
 
@@ -20,6 +20,7 @@ export function Pagar() {
   const supabase = createClient();
   const [rows, setRows] = useState<FinPagar[]>([]);
   const [receber, setReceber] = useState<FinReceber[]>([]);
+  const [impostoPct, setImpostoPct] = useState(FIN_CONFIG_DEFAULT.imposto_pct);
   const [loading, setLoading] = useState(true);
   const [modal, setModal] = useState(false);
 
@@ -30,12 +31,14 @@ export function Pagar() {
   const [vencimento, setVencimento] = useState("");
 
   async function carregar() {
-    const [{ data: p }, { data: r }] = await Promise.all([
+    const [{ data: p }, { data: r }, { data: cfg }] = await Promise.all([
       supabase.from("fin_pagar").select("*").order("vencimento"),
       supabase.from("fin_receber").select("*"),
+      supabase.from("fin_config").select("imposto_pct").eq("id", 1).maybeSingle(),
     ]);
     setRows((p as FinPagar[]) ?? []);
     setReceber((r as FinReceber[]) ?? []);
+    if (cfg?.imposto_pct != null) setImpostoPct(Number(cfg.imposto_pct));
     setLoading(false);
   }
   useEffect(() => { carregar(); }, []); // eslint-disable-line
@@ -71,8 +74,8 @@ export function Pagar() {
     const faturamento = receber
       .filter((r) => r.status === "pago" && (r.pago_em ?? r.vencimento)?.startsWith(ym))
       .reduce((s, r) => s + Number(r.valor), 0);
-    return { faturamento, imposto: faturamento * SPLIT_IMPOSTOS, ym };
-  }, [receber]);
+    return { faturamento, imposto: faturamento * (impostoPct / 100), ym };
+  }, [receber, impostoPct]);
 
   const totalPagar = rows.filter((r) => r.status !== "pago").reduce((s, r) => s + Number(r.valor), 0);
   const totalPago = rows.filter((r) => r.status === "pago").reduce((s, r) => s + Number(r.valor), 0);
@@ -91,7 +94,7 @@ export function Pagar() {
           <div className="mt-1 text-xl font-bold text-neutral-800">{brl(totalPago)}</div>
         </div>
         <div className="rounded-xl border border-amber-200 bg-amber-50 p-4">
-          <div className="text-xs text-amber-600">Imposto do mês (12% do faturamento)</div>
+          <div className="text-xs text-amber-600">Imposto do mês ({Number(impostoPct.toFixed(2))}% do faturamento)</div>
           <div className="mt-1 text-xl font-bold text-amber-700">{brl(impostoMes.imposto)}</div>
           <div className="text-[11px] text-amber-500">Faturamento pago em {impostoMes.ym}: {brl(impostoMes.faturamento)}</div>
         </div>
