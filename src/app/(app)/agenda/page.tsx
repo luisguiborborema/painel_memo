@@ -15,6 +15,7 @@ export default function AgendaPage() {
   const [itens, setItens] = useState<AgendaItem[]>([]);
   const [googleItens, setGoogleItens] = useState<AgendaItem[]>([]);
   const [googleOn, setGoogleOn] = useState<boolean | null>(null);
+  const [googleErro, setGoogleErro] = useState<string | null>(null);
   const [sincronizando, setSincronizando] = useState(false);
   const [loading, setLoading] = useState(true);
   const [view, setView] = useState<"mes" | "lista">("mes");
@@ -31,6 +32,7 @@ export default function AgendaPage() {
       const res = await fetch("/api/google/events");
       const json = await res.json();
       setGoogleOn(!!json.configured);
+      setGoogleErro(json.error ?? null);
       setGoogleItens(
         (json.eventos ?? []).map(
           (e: { id: string; titulo: string; data: string; local: string | null }): AgendaItem => ({
@@ -147,6 +149,11 @@ export default function AgendaPage() {
             </span>
           )}
         </div>
+        {googleErro && (
+          <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
+            Erro ao ler o Google Agenda: {googleErro}. Abra <code>/api/google/status</code> (logado) para diagnóstico.
+          </div>
+        )}
 
         {view === "mes" ? (
           <div className="rounded-2xl border border-neutral-200 bg-white p-4">
