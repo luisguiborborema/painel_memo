@@ -5,7 +5,9 @@ import { createClient } from "@/lib/supabase/client";
 import type { AgendaItem } from "@/lib/types";
 import { PageHeader } from "@/components/PageHeader";
 import { Button, Spinner } from "@/components/ui";
-import { formatData, parseDate, toISODate } from "@/lib/format";
+import { formatData, toISODate } from "@/lib/format";
+import { EventoModal } from "./EventoModal";
+import { NovoEventoModal } from "./NovoEventoModal";
 
 const DIAS = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
 const MESES = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
@@ -19,6 +21,8 @@ export default function AgendaPage() {
   const [sincronizando, setSincronizando] = useState(false);
   const [loading, setLoading] = useState(true);
   const [view, setView] = useState<"mes" | "lista">("mes");
+  const [selecionado, setSelecionado] = useState<AgendaItem | null>(null);
+  const [novoOpen, setNovoOpen] = useState(false);
   // mês/ano de referência (guardado como números para evitar Date.now no server)
   const [ref, setRef] = useState<{ y: number; m: number } | null>(null);
 
@@ -35,12 +39,13 @@ export default function AgendaPage() {
       setGoogleErro(json.error ?? null);
       setGoogleItens(
         (json.eventos ?? []).map(
-          (e: { id: string; titulo: string; data: string; local: string | null }): AgendaItem => ({
+          (e: { id: string; titulo: string; data: string; local: string | null; link: string | null }): AgendaItem => ({
             data: e.data,
             tipo: "google",
             titulo: e.titulo,
             ref_id: e.id,
             local: e.local,
+            link: e.link,
           })
         )
       );
@@ -124,9 +129,12 @@ export default function AgendaPage() {
         actions={
           <div className="flex items-center gap-2">
             {googleOn && (
-              <Button variant="outline" size="sm" onClick={sincronizar} disabled={sincronizando}>
-                {sincronizando ? "Sincronizando..." : "↻ Sincronizar Google"}
-              </Button>
+              <>
+                <Button variant="outline" size="sm" onClick={sincronizar} disabled={sincronizando}>
+                  {sincronizando ? "Sincronizando..." : "↻ Sincronizar"}
+                </Button>
+                <Button size="sm" onClick={() => setNovoOpen(true)}>+ Novo evento</Button>
+              </>
             )}
             <div className="flex gap-1">
               <Button variant={view === "mes" ? "primary" : "outline"} size="sm" onClick={() => setView("mes")}>Mês</Button>
@@ -178,9 +186,14 @@ export default function AgendaPage() {
                     <div className={`text-xs font-medium ${isHoje ? "flex h-5 w-5 items-center justify-center rounded-full bg-neutral-900 text-white" : "text-neutral-500"}`}>{dia}</div>
                     <div className="mt-1 flex flex-col gap-0.5">
                       {items.slice(0, 3).map((it) => (
-                        <div key={`${it.tipo}-${it.ref_id}`} className={`truncate rounded px-1 text-[10px] ${it.tipo === "fechado" ? "bg-red-100 text-red-700" : it.tipo === "google" ? "bg-sky-100 text-sky-700" : "bg-amber-100 text-amber-700"}`} title={it.titulo}>
+                        <button
+                          key={`${it.tipo}-${it.ref_id}`}
+                          onClick={() => setSelecionado(it)}
+                          className={`truncate rounded px-1 text-left text-[10px] hover:brightness-95 ${it.tipo === "fechado" ? "bg-red-100 text-red-700" : it.tipo === "google" ? "bg-sky-100 text-sky-700" : "bg-amber-100 text-amber-700"}`}
+                          title={it.titulo}
+                        >
                           {it.titulo}
-                        </div>
+                        </button>
                       ))}
                       {items.length > 3 && <div className="text-[10px] text-neutral-400">+{items.length - 3}</div>}
                     </div>
@@ -192,7 +205,11 @@ export default function AgendaPage() {
         ) : (
           <div className="flex flex-col gap-2">
             {futuros.map((it) => (
-              <div key={`${it.tipo}-${it.ref_id}`} className="flex items-center gap-3 rounded-xl border border-neutral-200 bg-white px-4 py-3">
+              <button
+                key={`${it.tipo}-${it.ref_id}`}
+                onClick={() => setSelecionado(it)}
+                className="flex items-center gap-3 rounded-xl border border-neutral-200 bg-white px-4 py-3 text-left transition-shadow hover:shadow-sm"
+              >
                 <div className={`h-2.5 w-2.5 rounded-full ${it.tipo === "fechado" ? "bg-red-500" : it.tipo === "google" ? "bg-sky-500" : "bg-amber-500"}`} />
                 <div className="w-24 text-sm font-medium text-neutral-600">{formatData(it.data)}</div>
                 <div className="flex-1 text-sm font-semibold text-neutral-800">{it.titulo}</div>
@@ -200,12 +217,29 @@ export default function AgendaPage() {
                 <span className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${it.tipo === "fechado" ? "bg-red-100 text-red-700" : it.tipo === "google" ? "bg-sky-100 text-sky-700" : "bg-amber-100 text-amber-700"}`}>
                   {it.tipo === "fechado" ? "Fechado" : it.tipo === "google" ? "Google" : "Negociação"}
                 </span>
-              </div>
+              </button>
             ))}
             {futuros.length === 0 && <p className="text-sm text-neutral-400">Nenhum evento na agenda.</p>}
           </div>
         )}
       </div>
+
+      {selecionado && (
+        <EventoModal
+          evento={selecionado}
+          onClose={() => setSelecionado(null)}
+          onChange={carregarGoogle}
+        />
+      )}
+
+      <NovoEventoModal
+        open={novoOpen}
+        onClose={() => setNovoOpen(false)}
+        onCreated={async () => {
+          setNovoOpen(false);
+          await carregarGoogle();
+        }}
+      />
     </div>
   );
 }

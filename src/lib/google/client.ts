@@ -22,3 +22,23 @@ export async function deleteEventoGoogle(googleEventId: string) {
     /* silencioso */
   }
 }
+
+// Cria um evento avulso (dia inteiro) no Google. Retorna true em caso de sucesso.
+export async function criarEventoGoogle(ev: {
+  titulo: string;
+  data: string;
+  local?: string;
+  descricao?: string;
+}): Promise<{ ok: boolean; error?: string }> {
+  try {
+    const res = await fetch("/api/google/events", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(ev),
+    });
+    const json = await res.json();
+    return res.ok ? { ok: true } : { ok: false, error: json.error };
+  } catch (e) {
+    return { ok: false, error: (e as Error).message };
+  }
+}

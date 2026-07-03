@@ -78,8 +78,31 @@ export type GoogleEvento = {
   titulo: string;
   data: string;
   local: string | null;
+  link: string | null; // htmlLink para abrir no Google Calendar
   externo: boolean; // true = criado direto no Google (não veio do MEMO)
 };
+
+// Cria um evento avulso (dia inteiro) no calendário da MEMO.
+export async function criarEvento(ev: {
+  titulo: string;
+  data: string;
+  local?: string | null;
+  descricao?: string | null;
+}): Promise<string | null> {
+  if (!googleConfigured || !ev.data) return null;
+  const calendar = getCalendar();
+  const res = await calendar.events.insert({
+    calendarId: CALENDAR_ID,
+    requestBody: {
+      summary: ev.titulo || "(sem título)",
+      location: ev.local ?? undefined,
+      description: ev.descricao ?? undefined,
+      start: { date: ev.data },
+      end: { date: addDaysISO(ev.data, 1) },
+    },
+  });
+  return res.data.id ?? null;
+}
 
 // Lista eventos do calendário num intervalo. Marca quais são externos (sem tag MEMO).
 export async function listarEventos(fromISO: string, toISO: string): Promise<GoogleEvento[]> {
@@ -104,6 +127,7 @@ export async function listarEventos(fromISO: string, toISO: string): Promise<Goo
         titulo: e.summary ?? "(sem título)",
         data,
         local: e.location ?? null,
+        link: e.htmlLink ?? null,
         externo: !memoId,
       };
     })

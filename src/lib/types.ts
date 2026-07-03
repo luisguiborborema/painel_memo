@@ -161,4 +161,5 @@ export type AgendaItem = {
   titulo: string;
   ref_id: string;
   local: string | null;
+  link?: string | null; // htmlLink do Google (para eventos externos)
 };
