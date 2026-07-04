@@ -162,4 +162,9 @@ export type AgendaItem = {
   ref_id: string;
   local: string | null;
   link?: string | null; // htmlLink do Google (para eventos externos)
+  allDay?: boolean;
+  horaInicio?: string | null; // "HH:MM"
+  horaFim?: string | null;
+  descricao?: string | null;
+  participantes?: string[];
 };

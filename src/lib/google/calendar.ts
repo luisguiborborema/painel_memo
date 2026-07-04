@@ -77,31 +77,82 @@ export type GoogleEvento = {
   id: string;
   titulo: string;
   data: string;
+  allDay: boolean;
+  horaInicio: string | null; // "HH:MM"
+  horaFim: string | null; // "HH:MM"
   local: string | null;
+  descricao: string | null;
+  participantes: string[];
   link: string | null; // htmlLink para abrir no Google Calendar
   externo: boolean; // true = criado direto no Google (não veio do MEMO)
 };
 
-// Cria um evento avulso (dia inteiro) no calendário da MEMO.
-export async function criarEvento(ev: {
+const TIMEZONE = "America/Sao_Paulo";
+
+export type NovoEvento = {
   titulo: string;
   data: string;
+  allDay?: boolean;
+  horaInicio?: string | null; // "HH:MM"
+  horaFim?: string | null; // "HH:MM"
   local?: string | null;
   descricao?: string | null;
-}): Promise<string | null> {
+  participantes?: string[];
+};
+
+function montaStartEnd(ev: NovoEvento) {
+  if (ev.allDay === false && ev.horaInicio) {
+    const fim = ev.horaFim && ev.horaFim > ev.horaInicio ? ev.horaFim : somaHora(ev.horaInicio, 1);
+    return {
+      start: { dateTime: `${ev.data}T${ev.horaInicio}:00`, timeZone: TIMEZONE },
+      end: { dateTime: `${ev.data}T${fim}:00`, timeZone: TIMEZONE },
+    };
+  }
+  return { start: { date: ev.data }, end: { date: addDaysISO(ev.data, 1) } };
+}
+
+// Cria um evento no calendário da MEMO (dia inteiro ou com horário).
+export async function criarEvento(ev: NovoEvento): Promise<string | null> {
   if (!googleConfigured || !ev.data) return null;
   const calendar = getCalendar();
+  const participantes = (ev.participantes ?? []).map((p) => p.trim()).filter(Boolean);
   const res = await calendar.events.insert({
     calendarId: CALENDAR_ID,
     requestBody: {
       summary: ev.titulo || "(sem título)",
       location: ev.local ?? undefined,
       description: ev.descricao ?? undefined,
-      start: { date: ev.data },
-      end: { date: addDaysISO(ev.data, 1) },
+      ...montaStartEnd(ev),
+      extendedProperties: participantes.length
+        ? { private: { participantes: participantes.join(", ") } }
+        : undefined,
     },
   });
   return res.data.id ?? null;
+}
+
+// Atualiza um evento avulso existente.
+export async function atualizarEvento(eventId: string, ev: NovoEvento): Promise<void> {
+  if (!googleConfigured) return;
+  const calendar = getCalendar();
+  const participantes = (ev.participantes ?? []).map((p) => p.trim()).filter(Boolean);
+  await calendar.events.patch({
+    calendarId: CALENDAR_ID,
+    eventId,
+    requestBody: {
+      summary: ev.titulo || "(sem título)",
+      location: ev.local ?? null,
+      description: ev.descricao ?? null,
+      ...montaStartEnd(ev),
+      extendedProperties: { private: { participantes: participantes.join(", ") } },
+    },
+  });
+}
+
+function somaHora(hhmm: string, horas: number): string {
+  const [h, m] = hhmm.split(":").map(Number);
+  const total = (h + horas) % 24;
+  return `${String(total).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
 }
 
 // Lista eventos do calendário num intervalo. Marca quais são externos (sem tag MEMO).
@@ -122,11 +173,18 @@ export async function listarEventos(fromISO: string, toISO: string): Promise<Goo
       const data = e.start?.date ?? e.start?.dateTime?.slice(0, 10);
       if (!data || !e.id) return null;
       const memoId = e.extendedProperties?.private?.[MEMO_TAG];
+      const allDay = !!e.start?.date;
+      const partStr = e.extendedProperties?.private?.participantes ?? "";
       return {
         id: e.id,
         titulo: e.summary ?? "(sem título)",
         data,
+        allDay,
+        horaInicio: e.start?.dateTime ? e.start.dateTime.slice(11, 16) : null,
+        horaFim: e.end?.dateTime ? e.end.dateTime.slice(11, 16) : null,
         local: e.location ?? null,
+        descricao: e.description ?? null,
+        participantes: partStr ? partStr.split(",").map((p) => p.trim()).filter(Boolean) : [],
         link: e.htmlLink ?? null,
         externo: !memoId,
       };

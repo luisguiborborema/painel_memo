@@ -39,13 +39,22 @@ export default function AgendaPage() {
       setGoogleErro(json.error ?? null);
       setGoogleItens(
         (json.eventos ?? []).map(
-          (e: { id: string; titulo: string; data: string; local: string | null; link: string | null }): AgendaItem => ({
+          (e: {
+            id: string; titulo: string; data: string; local: string | null; link: string | null;
+            allDay: boolean; horaInicio: string | null; horaFim: string | null;
+            descricao: string | null; participantes: string[];
+          }): AgendaItem => ({
             data: e.data,
             tipo: "google",
             titulo: e.titulo,
             ref_id: e.id,
             local: e.local,
             link: e.link,
+            allDay: e.allDay,
+            horaInicio: e.horaInicio,
+            horaFim: e.horaFim,
+            descricao: e.descricao,
+            participantes: e.participantes,
           })
         )
       );
@@ -211,7 +220,10 @@ export default function AgendaPage() {
                 className="flex items-center gap-3 rounded-xl border border-neutral-200 bg-white px-4 py-3 text-left transition-shadow hover:shadow-sm"
               >
                 <div className={`h-2.5 w-2.5 rounded-full ${it.tipo === "fechado" ? "bg-red-500" : it.tipo === "google" ? "bg-sky-500" : "bg-amber-500"}`} />
-                <div className="w-24 text-sm font-medium text-neutral-600">{formatData(it.data)}</div>
+                <div className="w-24 shrink-0 text-sm font-medium text-neutral-600">
+                  {formatData(it.data)}
+                  {it.horaInicio && <span className="block text-[11px] text-neutral-400">{it.horaInicio}</span>}
+                </div>
                 <div className="flex-1 text-sm font-semibold text-neutral-800">{it.titulo}</div>
                 {it.local && <div className="text-xs text-neutral-400">📍 {it.local}</div>}
                 <span className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${it.tipo === "fechado" ? "bg-red-100 text-red-700" : it.tipo === "google" ? "bg-sky-100 text-sky-700" : "bg-amber-100 text-amber-700"}`}>

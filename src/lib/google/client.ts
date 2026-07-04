@@ -23,18 +23,36 @@ export async function deleteEventoGoogle(googleEventId: string) {
   }
 }
 
-// Cria um evento avulso (dia inteiro) no Google. Retorna true em caso de sucesso.
-export async function criarEventoGoogle(ev: {
+export type EventoInput = {
   titulo: string;
   data: string;
+  allDay: boolean;
+  horaInicio?: string;
+  horaFim?: string;
   local?: string;
   descricao?: string;
-}): Promise<{ ok: boolean; error?: string }> {
+  participantes?: string[];
+};
+
+// Cria um evento no Google. Retorna ok/erro.
+export async function criarEventoGoogle(ev: EventoInput): Promise<{ ok: boolean; error?: string }> {
+  return enviaEvento("POST", ev);
+}
+
+// Edita um evento avulso no Google.
+export async function editarEventoGoogle(
+  eventId: string,
+  ev: EventoInput
+): Promise<{ ok: boolean; error?: string }> {
+  return enviaEvento("PATCH", { ...ev, eventId });
+}
+
+async function enviaEvento(method: "POST" | "PATCH", body: object): Promise<{ ok: boolean; error?: string }> {
   try {
     const res = await fetch("/api/google/events", {
-      method: "POST",
+      method,
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(ev),
+      body: JSON.stringify(body),
     });
     const json = await res.json();
     return res.ok ? { ok: true } : { ok: false, error: json.error };
