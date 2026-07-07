@@ -87,12 +87,14 @@ export function Modal({
   title,
   children,
   wide = false,
+  xl = false,
 }: {
   open: boolean;
   onClose: () => void;
   title?: ReactNode;
   children: ReactNode;
   wide?: boolean;
+  xl?: boolean;
 }) {
   useEffect(() => {
     if (!open) return;
@@ -112,7 +114,7 @@ export function Modal({
       onClick={onClose}
     >
       <div
-        className={`w-full ${wide ? "max-w-3xl" : "max-w-lg"} rounded-2xl bg-white shadow-xl`}
+        className={`w-full ${xl ? "max-w-5xl" : wide ? "max-w-3xl" : "max-w-lg"} rounded-2xl bg-white shadow-xl`}
         onClick={(e) => e.stopPropagation()}
       >
         {title && (
