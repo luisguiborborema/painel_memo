@@ -4,10 +4,13 @@ import { useCallback, useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import type { Lead, AgendaItem, LeadColuna } from "@/lib/types";
 import { LEAD_COLUNAS } from "@/lib/constants";
+import { valorServicos } from "@/lib/porte";
+import { brl } from "@/lib/format";
 import { PageHeader } from "@/components/PageHeader";
 import { Button, Spinner } from "@/components/ui";
 import { Kanban } from "@/components/Kanban";
 import { LeadCard } from "./LeadCard";
+import { LeadLista } from "./LeadLista";
 import { NovoLeadModal } from "./NovoLeadModal";
 import { LeadDetalhe } from "./LeadDetalhe";
 import { PassagemBastao } from "./PassagemBastao";
@@ -20,6 +23,7 @@ export default function ComercialPage() {
   const [novoOpen, setNovoOpen] = useState(false);
   const [selecionado, setSelecionado] = useState<Lead | null>(null);
   const [passagem, setPassagem] = useState<Lead | null>(null);
+  const [view, setView] = useState<"kanban" | "lista">("kanban");
 
   const carregar = useCallback(async () => {
     const [{ data: ls }, { data: ag }] = await Promise.all([
@@ -52,13 +56,21 @@ export default function ComercialPage() {
     <div className="flex h-full flex-col">
       <PageHeader
         title="Comercial"
-        subtitle="Captação → qualificação → proposta → fechamento"
-        actions={<Button onClick={() => setNovoOpen(true)}>+ Novo lead</Button>}
+        subtitle="Primeiro contato → contrato assinado"
+        actions={
+          <div className="flex items-center gap-2">
+            <div className="flex gap-1">
+              <Button variant={view === "kanban" ? "primary" : "outline"} size="sm" onClick={() => setView("kanban")}>Kanban</Button>
+              <Button variant={view === "lista" ? "primary" : "outline"} size="sm" onClick={() => setView("lista")}>Lista</Button>
+            </div>
+            <Button onClick={() => setNovoOpen(true)}>+ Novo lead</Button>
+          </div>
+        }
       />
 
       {loading ? (
         <Spinner />
-      ) : (
+      ) : view === "kanban" ? (
         <div className="min-h-0 flex-1 pt-4">
           <Kanban<LeadColuna, Lead>
             colunas={LEAD_COLUNAS.map((c) => ({
@@ -72,7 +84,20 @@ export default function ComercialPage() {
             renderCard={(l) => (
               <LeadCard lead={l} agenda={agenda} onClick={() => setSelecionado(l)} />
             )}
+            renderFooter={(_col, cards) => {
+              const total = cards.reduce((s, l) => s + valorServicos(l.servicos), 0);
+              return (
+                <div className="flex items-center justify-between text-[11px] text-neutral-500">
+                  <span>{cards.length} card(s)</span>
+                  <span className="font-semibold text-neutral-700">{brl(total)}</span>
+                </div>
+              );
+            }}
           />
+        </div>
+      ) : (
+        <div className="min-h-0 flex-1 overflow-y-auto pt-4">
+          <LeadLista leads={leads} onSelect={setSelecionado} />
         </div>
       )}
 

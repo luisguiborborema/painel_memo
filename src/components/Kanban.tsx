@@ -15,6 +15,7 @@ export function Kanban<K extends string, T extends { id: string }>({
   onMove,
   renderCard,
   renderHeaderExtra,
+  renderFooter,
 }: {
   colunas: KanbanCol<K>[];
   itens: T[];
@@ -22,6 +23,7 @@ export function Kanban<K extends string, T extends { id: string }>({
   onMove: (item: T, novaColuna: K) => void;
   renderCard: (item: T) => ReactNode;
   renderHeaderExtra?: (coluna: K, itens: T[]) => ReactNode;
+  renderFooter?: (coluna: K, itens: T[]) => ReactNode;
 }) {
   const [dragId, setDragId] = useState<string | null>(null);
   const [overCol, setOverCol] = useState<K | null>(null);
@@ -89,6 +91,11 @@ export function Kanban<K extends string, T extends { id: string }>({
                 </div>
               )}
             </div>
+            {renderFooter && (
+              <div className="border-t border-neutral-200 px-3 py-2">
+                {renderFooter(col.key, cards)}
+              </div>
+            )}
           </div>
         );
       })}

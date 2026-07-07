@@ -23,6 +23,10 @@ export type SplitModo = "padrao" | "igual";
 
 export type ChecklistItem = { label: string; done: boolean };
 
+export type Porte = "intimista" | "mini_wedding" | "classico" | "especial";
+
+export type ServicoValor = { nome: string; valor: number };
+
 export type Lead = {
   id: string;
   nome_casal: string;
@@ -32,6 +36,11 @@ export type Lead = {
   whatsapp: string | null;
   origem: OrigemLead | null;
   servicos_interesse: string[];
+  servicos: ServicoValor[];
+  porte: Porte | null;
+  porte_manual: boolean;
+  proxima_atividade_data: string | null;
+  proxima_atividade_desc: string | null;
   coluna_atual: LeadColuna;
   posicao: number;
   link_proposta: string | null;
@@ -47,6 +56,7 @@ export type LeadFollowup = {
   data: string;
   feito: boolean;
   observacao: string | null;
+  proximo_contato_agendado: string | null;
   created_at: string;
 };
 

@@ -1,11 +1,12 @@
 import type { LeadColuna, OperacaoColuna } from "./types";
 
+// Rótulos V2 (as chaves internas do enum são mantidas para não migrar o banco).
 export const LEAD_COLUNAS: { key: LeadColuna; label: string }[] = [
-  { key: "lead_novo", label: "Lead novo" },
-  { key: "qualificado", label: "Qualificado" },
-  { key: "proposta_enviada", label: "Proposta enviada" },
-  { key: "follow_up", label: "Follow-up" },
-  { key: "fechamento", label: "Fechamento" },
+  { key: "lead_novo", label: "Primeiro contato" },
+  { key: "qualificado", label: "Alinhando expectativas" },
+  { key: "proposta_enviada", label: "Proposta em mãos" },
+  { key: "follow_up", label: "Acompanhamento" },
+  { key: "fechamento", label: "Contrato assinado" },
 ];
 
 export const OPERACAO_COLUNAS: { key: OperacaoColuna; label: string; condicional?: string }[] = [
