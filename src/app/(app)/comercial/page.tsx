@@ -11,6 +11,7 @@ import { Button, Spinner } from "@/components/ui";
 import { Kanban } from "@/components/Kanban";
 import { LeadCard } from "./LeadCard";
 import { LeadLista } from "./LeadLista";
+import { ForecastPanel } from "./ForecastPanel";
 import { NovoLeadModal } from "./NovoLeadModal";
 import { LeadDetalhe } from "./LeadDetalhe";
 import { PassagemBastao } from "./PassagemBastao";
@@ -67,6 +68,8 @@ export default function ComercialPage() {
           </div>
         }
       />
+
+      {!loading && <ForecastPanel leads={leads} />}
 
       {loading ? (
         <Spinner />

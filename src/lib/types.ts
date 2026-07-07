@@ -27,6 +27,15 @@ export type Porte = "intimista" | "mini_wedding" | "classico" | "especial";
 
 export type ServicoValor = { nome: string; valor: number };
 
+export type ServicoConfig = {
+  id: string;
+  nome: string;
+  cor: string;
+  ordem: number;
+  ativo: boolean;
+  created_at: string;
+};
+
 export type Lead = {
   id: string;
   nome_casal: string;

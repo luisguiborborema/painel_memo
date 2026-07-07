@@ -2,13 +2,16 @@
 
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
-import type { Lead, LeadFollowup, LeadAnotacao, AgendaItem, LeadColuna } from "@/lib/types";
-import { SERVICOS, LEAD_COLUNAS } from "@/lib/constants";
+import type { Lead, LeadFollowup, LeadAnotacao, AgendaItem, LeadColuna, Porte, ServicoValor } from "@/lib/types";
+import { LEAD_COLUNAS } from "@/lib/constants";
+import { sugestaoPorte } from "@/lib/porte";
 import { avaliarData, DISP_UI } from "@/lib/agenda";
 import { formatData, formatDataHora, toISODate } from "@/lib/format";
 import { proximoContato, descricaoCadencia } from "@/lib/cadencia";
 import { Button, Input, Modal, Select, Textarea } from "@/components/ui";
 import { ReguaMensagens } from "@/components/ReguaMensagens";
+import { ServicosEditor } from "./ServicosEditor";
+import { PorteBar } from "./PorteBar";
 
 type Tab = "detalhes" | "cadencia" | "regua";
 
@@ -49,11 +52,21 @@ export function LeadDetalhe({
     setForm((f) => ({ ...f, [k]: v }));
   }
 
-  function toggleServico(k: string) {
-    const s = form.servicos_interesse.includes(k)
-      ? form.servicos_interesse.filter((x) => x !== k)
-      : [...form.servicos_interesse, k];
-    set("servicos_interesse", s);
+  // Ao editar convidados, sugere o porte (se ainda não foi definido manualmente).
+  function setConvidados(v: number | null) {
+    setForm((f) => {
+      const next = { ...f, num_convidados: v };
+      if (!f.porte_manual) next.porte = sugestaoPorte(v);
+      return next;
+    });
+  }
+
+  function setServicos(servicos: ServicoValor[]) {
+    set("servicos", servicos);
+  }
+
+  function setPorte(porte: Porte, manual: boolean) {
+    setForm((f) => ({ ...f, porte, porte_manual: manual }));
   }
 
   async function salvarInfos() {
@@ -67,12 +80,19 @@ export function LeadDetalhe({
         local: form.local,
         whatsapp: form.whatsapp,
         origem: form.origem,
-        servicos_interesse: form.servicos_interesse,
+        servicos: form.servicos ?? [],
+        porte: form.porte,
+        porte_manual: form.porte_manual,
         link_proposta: form.link_proposta,
       })
       .eq("id", lead.id);
     setSaving(false);
     onChange();
+  }
+
+  // Persiste apenas os serviços (onBlur do editor), sem resetar o form.
+  async function salvarServicos() {
+    await supabase.from("leads").update({ servicos: form.servicos ?? [] }).eq("id", lead.id);
   }
 
   // Persiste o link do cardápio imediatamente (corrige bug de não salvar).
@@ -183,8 +203,11 @@ export function LeadDetalhe({
         <div className="flex flex-col gap-3">
           <div className="grid grid-cols-2 gap-3">
             <Input label="Data do casamento" type="date" value={form.data_casamento ?? ""} onChange={(e) => set("data_casamento", e.target.value || null)} />
-            <Input label="Nº de convidados" type="number" value={form.num_convidados ?? ""} onChange={(e) => set("num_convidados", e.target.value ? Number(e.target.value) : null)} />
+            <Input label="Nº de convidados" type="number" value={form.num_convidados ?? ""} onChange={(e) => setConvidados(e.target.value ? Number(e.target.value) : null)} />
           </div>
+
+          <PorteBar porte={form.porte} convidados={form.num_convidados} onChange={setPorte} />
+
           <Input label="Local" value={form.local ?? ""} onChange={(e) => set("local", e.target.value)} />
           <div className="grid grid-cols-2 gap-3">
             <Input label="WhatsApp" value={form.whatsapp ?? ""} onChange={(e) => set("whatsapp", e.target.value)} />
@@ -196,18 +219,8 @@ export function LeadDetalhe({
           </div>
 
           <div>
-            <span className="mb-1 block text-sm font-medium text-neutral-600">Serviços de interesse</span>
-            <div className="flex flex-wrap gap-1.5">
-              {SERVICOS.map((s) => {
-                const on = form.servicos_interesse.includes(s.key);
-                return (
-                  <button key={s.key} type="button" onClick={() => toggleServico(s.key)}
-                    className={`rounded-full border px-2.5 py-1 text-xs font-medium ${on ? s.cor : "border-neutral-200 bg-white text-neutral-400"}`}>
-                    {s.label}
-                  </button>
-                );
-              })}
-            </div>
+            <span className="mb-1 block text-sm font-medium text-neutral-600">Serviços (com valor)</span>
+            <ServicosEditor value={form.servicos ?? []} onChange={setServicos} onBlurSave={salvarServicos} />
           </div>
 
           <div className="flex items-end gap-2">

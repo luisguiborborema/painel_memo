@@ -5,9 +5,13 @@ import { createClient } from "@/lib/supabase/client";
 import type { MsgTemplate } from "@/lib/types";
 import { PageHeader } from "@/components/PageHeader";
 import { Button, Spinner } from "@/components/ui";
+import { ServicosConfig } from "./ServicosConfig";
+
+type Aba = "regua" | "servicos";
 
 export default function ConfigPage() {
   const supabase = createClient();
+  const [aba, setAba] = useState<Aba>("regua");
   const [templates, setTemplates] = useState<MsgTemplate[]>([]);
   const [loading, setLoading] = useState(true);
   const [salvo, setSalvo] = useState<string | null>(null);
@@ -34,9 +38,17 @@ export default function ConfigPage() {
       <PageHeader
         title="Régua & Configuração"
         subtitle="Mensagens-modelo (copiar e colar). Variáveis: {nome_casal}, {data}, {link_proposta}, {local}"
+        tabs={
+          <>
+            <button onClick={() => setAba("regua")} className={`rounded-lg px-3.5 py-1.5 text-sm font-medium ${aba === "regua" ? "bg-neutral-900 text-white" : "text-neutral-500 hover:bg-neutral-100"}`}>Régua</button>
+            <button onClick={() => setAba("servicos")} className={`rounded-lg px-3.5 py-1.5 text-sm font-medium ${aba === "servicos" ? "bg-neutral-900 text-white" : "text-neutral-500 hover:bg-neutral-100"}`}>Serviços</button>
+          </>
+        }
       />
       <div className="flex-1 overflow-y-auto p-6">
-        {loading ? (
+        {aba === "servicos" ? (
+          <ServicosConfig />
+        ) : loading ? (
           <Spinner />
         ) : (
           <div className="mx-auto flex max-w-2xl flex-col gap-4">

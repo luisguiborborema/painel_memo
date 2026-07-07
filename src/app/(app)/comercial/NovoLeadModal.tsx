@@ -3,9 +3,11 @@
 import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { Button, Input, Modal, Select, Textarea } from "@/components/ui";
-import { SERVICOS, ORIGENS } from "@/lib/constants";
+import { ORIGENS } from "@/lib/constants";
+import { sugestaoPorte } from "@/lib/porte";
 import { avaliarData, DISP_UI } from "@/lib/agenda";
-import type { AgendaItem } from "@/lib/types";
+import type { AgendaItem, ServicoValor } from "@/lib/types";
+import { ServicosEditor } from "./ServicosEditor";
 
 export function NovoLeadModal({
   open,
@@ -24,16 +26,12 @@ export function NovoLeadModal({
   const [local, setLocal] = useState("");
   const [whatsapp, setWhatsapp] = useState("");
   const [origem, setOrigem] = useState("instagram");
-  const [servicos, setServicos] = useState<string[]>([]);
+  const [servicos, setServicos] = useState<ServicoValor[]>([]);
   const [anotacao, setAnotacao] = useState("");
   const [saving, setSaving] = useState(false);
 
   const disp = avaliarData(data || null, agenda);
   const ui = DISP_UI[disp.estado];
-
-  function toggleServico(k: string) {
-    setServicos((s) => (s.includes(k) ? s.filter((x) => x !== k) : [...s, k]));
-  }
 
   function reset() {
     setNome(""); setData(""); setConvidados(""); setLocal("");
@@ -54,7 +52,8 @@ export function NovoLeadModal({
         local: local || null,
         whatsapp: whatsapp || null,
         origem,
-        servicos_interesse: servicos,
+        servicos,
+        porte: sugestaoPorte(convidados ? Number(convidados) : null),
       })
       .select("id")
       .single();
@@ -137,25 +136,9 @@ export function NovoLeadModal({
 
         <div>
           <span className="mb-1 block text-sm font-medium text-neutral-600">
-            Serviços de interesse
+            Serviços de interesse (com valor)
           </span>
-          <div className="flex flex-wrap gap-1.5">
-            {SERVICOS.map((s) => {
-              const on = servicos.includes(s.key);
-              return (
-                <button
-                  key={s.key}
-                  type="button"
-                  onClick={() => toggleServico(s.key)}
-                  className={`rounded-full border px-2.5 py-1 text-xs font-medium transition ${
-                    on ? s.cor : "border-neutral-200 bg-white text-neutral-400"
-                  }`}
-                >
-                  {s.label}
-                </button>
-              );
-            })}
-          </div>
+          <ServicosEditor value={servicos} onChange={setServicos} />
         </div>
 
         <Textarea
