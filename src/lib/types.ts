@@ -119,6 +119,24 @@ export type OperacaoCard = {
   updated_at: string;
 };
 
+export type OperacaoFollowup = {
+  id: string;
+  operacao_id: string;
+  data: string;
+  feito: boolean;
+  observacao: string | null;
+  proximo_contato_agendado: string | null;
+  created_at: string;
+};
+
+export type OperacaoAnotacao = {
+  id: string;
+  operacao_id: string;
+  texto: string;
+  autor: string | null;
+  created_at: string;
+};
+
 export type OperacaoEquipe = {
   id: string;
   operacao_id: string;
