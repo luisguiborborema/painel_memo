@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import type { OperacaoEquipe, OperacaoColuna, ContratoServico } from "@/lib/types";
 import { OPERACAO_COLUNAS } from "@/lib/constants";
-import { brl, addDays } from "@/lib/format";
+import { brl } from "@/lib/format";
 import { syncContratoGoogle, deleteEventoGoogle } from "@/lib/google/client";
 import { Button, Input, Modal, Select, Textarea } from "@/components/ui";
 import type { OpCardFull } from "./OperacaoCard";
@@ -135,18 +135,9 @@ export function OperacaoDetalhe({
       .insert({ operacao_id: card.id, pessoa: pessoa.trim(), funcao: funcao || null, is_freelancer: isFree, valor })
       .select("*")
       .single();
-    if (data) {
-      setEquipe((e) => [...e, data]);
-      // Gera 2 lançamentos a pagar (50% sinal + 50% saldo) quando freelancer com valor
-      if (isFree && valor > 0 && c) {
-        const hoje = new Date().toISOString().slice(0, 10);
-        const metade = Math.round((valor / 2) * 100) / 100;
-        await supabase.from("fin_pagar").insert([
-          { descricao: `Freelancer ${pessoa.trim()} — sinal (50%)`, categoria: "freelancer", valor: metade, vencimento: hoje, status: "a_vencer", operacao_id: card.id, equipe_id: data.id, parcela: "sinal" },
-          { descricao: `Freelancer ${pessoa.trim()} — saldo (50%)`, categoria: "freelancer", valor: valor - metade, vencimento: c.data_evento ? addDays(c.data_evento, 7) : addDays(hoje, 30), status: "a_vencer", operacao_id: card.id, equipe_id: data.id, parcela: "saldo" },
-        ]);
-      }
-    }
+    if (data) setEquipe((e) => [...e, data]);
+    // Obs: as contas a pagar de freela são geradas na Calculadora (passagem de
+    // bastão), não aqui — a escala serve para definir função/vínculo da equipe.
     setPessoa(""); setFuncao(""); setValorFree(""); setIsFree(true);
   }
 

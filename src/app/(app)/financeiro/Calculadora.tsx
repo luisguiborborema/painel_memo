@@ -7,13 +7,14 @@ import { calcSplit, FIN_CONFIG_DEFAULT } from "@/lib/split";
 import { brl, formatData } from "@/lib/format";
 import { Button, Input } from "@/components/ui";
 
-type EquipeMini = { valor: number; is_freelancer: boolean };
-type OpMini = { contrato_id: string; operacao_equipe: EquipeMini[] };
+type PagarMini = { contrato_id: string | null; categoria: string; valor: number };
+type ReceberMini = { contrato_id: string | null; valor: number; status: string };
 
-export function Split() {
+export function Calculadora() {
   const supabase = createClient();
   const [contratos, setContratos] = useState<Contrato[]>([]);
   const [freePorContrato, setFreePorContrato] = useState<Record<string, number>>({});
+  const [parcelasPorContrato, setParcelasPorContrato] = useState<Record<string, { n: number; total: number }>>({});
   const [loading, setLoading] = useState(true);
 
   // parâmetros editáveis (com fallback nos defaults)
@@ -25,20 +26,29 @@ export function Split() {
 
   useEffect(() => {
     (async () => {
-      const [{ data: cs }, { data: ops }, { data: cfg }] = await Promise.all([
+      const [{ data: cs }, { data: pag }, { data: rec }, { data: cfg }] = await Promise.all([
         supabase.from("contratos").select("*").order("created_at", { ascending: false }),
-        supabase.from("operacao_cards").select("contrato_id, operacao_equipe(valor, is_freelancer)"),
+        supabase.from("fin_pagar").select("contrato_id, categoria, valor"),
+        supabase.from("fin_receber").select("contrato_id, valor, status"),
         supabase.from("fin_config").select("*").eq("id", 1).maybeSingle(),
       ]);
+      // custo de freelas por contrato (vindo das contas a pagar geradas na calculadora)
       const map: Record<string, number> = {};
-      for (const op of (ops as OpMini[]) ?? []) {
-        const soma = (op.operacao_equipe ?? [])
-          .filter((e) => e.is_freelancer)
-          .reduce((s, e) => s + Number(e.valor), 0);
-        map[op.contrato_id] = (map[op.contrato_id] ?? 0) + soma;
+      for (const p of (pag as PagarMini[]) ?? []) {
+        if (p.contrato_id && p.categoria === "freelancer")
+          map[p.contrato_id] = (map[p.contrato_id] ?? 0) + Number(p.valor);
+      }
+      // parcelas a receber por contrato
+      const parc: Record<string, { n: number; total: number }> = {};
+      for (const r of (rec as ReceberMini[]) ?? []) {
+        if (!r.contrato_id) continue;
+        const cur = parc[r.contrato_id] ?? { n: 0, total: 0 };
+        cur.n += 1; cur.total += Number(r.valor);
+        parc[r.contrato_id] = cur;
       }
       setContratos((cs as Contrato[]) ?? []);
       setFreePorContrato(map);
+      setParcelasPorContrato(parc);
       if (cfg) {
         setImposto(String(cfg.imposto_pct));
         setCaixa(String(cfg.caixa_pct));
@@ -144,9 +154,9 @@ export function Split() {
       </div>
 
       <p className="rounded-lg bg-blue-50 px-3 py-2 text-xs text-blue-700 border border-blue-200">
-        Cascata por evento: receita − imposto − caixa − custo de freelancers = lucro líquido.
-        Os valores acima recalculam todos os eventos ao vivo. Cada contrato usa seu modo
-        (padrão = percentuais acima · iguais = divisão igual entre os sócios).
+        Calculadora por evento: receita − imposto − caixa − custo de freelancers = lucro líquido,
+        dividido entre os sócios. Freelas e parcelas vêm dos lançamentos gerados na passagem de
+        bastão. Ajuste os parâmetros acima para recalcular todos os eventos ao vivo.
       </p>
 
       {contratos.map((c) => {
@@ -180,6 +190,15 @@ export function Split() {
                 </div>
               ))}
             </div>
+
+            {parcelasPorContrato[c.id] && (
+              <div className="mt-3 flex items-center gap-2 text-xs text-neutral-500">
+                <span className="rounded-full bg-neutral-100 px-2 py-0.5 font-medium">
+                  {parcelasPorContrato[c.id].n} parcela(s) a receber
+                </span>
+                <span>total {brl(parcelasPorContrato[c.id].total)}</span>
+              </div>
+            )}
           </div>
         );
       })}
