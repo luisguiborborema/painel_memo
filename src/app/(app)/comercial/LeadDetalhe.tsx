@@ -75,6 +75,16 @@ export function LeadDetalhe({
     onChange();
   }
 
+  // Persiste o link do cardápio imediatamente (corrige bug de não salvar).
+  // Não dispara onChange() de propósito: evita reset do form (perder edições
+  // não salvas de outros campos). O link não é exibido no board.
+  async function salvarLink() {
+    await supabase
+      .from("leads")
+      .update({ link_proposta: form.link_proposta || null })
+      .eq("id", lead.id);
+  }
+
   async function toggleChecklist(i: number) {
     const cl = form.checklist.map((c, idx) => (idx === i ? { ...c, done: !c.done } : c));
     set("checklist", cl);
@@ -201,7 +211,7 @@ export function LeadDetalhe({
           </div>
 
           <div className="flex items-end gap-2">
-            <Input label="Link do cardápio (proposta)" className="flex-1" value={form.link_proposta ?? ""} onChange={(e) => set("link_proposta", e.target.value)} placeholder="https://..." />
+            <Input label="Link do cardápio (proposta)" className="flex-1" value={form.link_proposta ?? ""} onChange={(e) => set("link_proposta", e.target.value)} onBlur={salvarLink} placeholder="https://..." />
             {form.link_proposta && (
               <a href={form.link_proposta} target="_blank" rel="noreferrer">
                 <Button type="button" variant="outline">Abrir</Button>
