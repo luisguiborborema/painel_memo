@@ -10,6 +10,7 @@ import { Button, Input, Modal, Textarea } from "@/components/ui";
 const TIPO_UI: Record<AgendaItem["tipo"], { label: string; classe: string }> = {
   fechado: { label: "Casamento fechado", classe: "bg-red-100 text-red-700" },
   negociacao: { label: "Negociação em aberto", classe: "bg-amber-100 text-amber-700" },
+  atividade: { label: "Tarefa de follow-up", classe: "bg-indigo-100 text-indigo-700" },
   google: { label: "Google Agenda", classe: "bg-sky-100 text-sky-700" },
 };
 
@@ -155,7 +156,7 @@ export function EventoModal({
               {evento.tipo === "fechado" && (
                 <Button onClick={() => router.push("/operacao")}>Ver na Operação</Button>
               )}
-              {evento.tipo === "negociacao" && (
+              {(evento.tipo === "negociacao" || evento.tipo === "atividade") && (
                 <Button onClick={() => router.push("/comercial")}>Ver no Comercial</Button>
               )}
             </div>
