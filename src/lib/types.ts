@@ -194,7 +194,7 @@ export type FinConfig = {
 
 export type AgendaItem = {
   data: string;
-  tipo: "fechado" | "negociacao" | "google" | "atividade";
+  tipo: "fechado" | "negociacao" | "google" | "atividade" | "followup_cliente";
   titulo: string;
   ref_id: string;
   local: string | null;

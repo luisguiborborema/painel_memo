@@ -14,13 +14,13 @@ const MESES = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Ag
 
 // cores por tipo de item
 function dotCor(tipo: AgendaItem["tipo"]) {
-  return tipo === "fechado" ? "bg-red-500" : tipo === "negociacao" ? "bg-amber-500" : tipo === "atividade" ? "bg-indigo-500" : "bg-sky-500";
+  return tipo === "fechado" ? "bg-red-500" : tipo === "negociacao" ? "bg-amber-500" : tipo === "atividade" ? "bg-indigo-500" : tipo === "followup_cliente" ? "bg-teal-500" : "bg-sky-500";
 }
 function chipCor(tipo: AgendaItem["tipo"]) {
-  return tipo === "fechado" ? "bg-red-100 text-red-700" : tipo === "negociacao" ? "bg-amber-100 text-amber-700" : tipo === "atividade" ? "bg-indigo-100 text-indigo-700" : "bg-sky-100 text-sky-700";
+  return tipo === "fechado" ? "bg-red-100 text-red-700" : tipo === "negociacao" ? "bg-amber-100 text-amber-700" : tipo === "atividade" ? "bg-indigo-100 text-indigo-700" : tipo === "followup_cliente" ? "bg-teal-100 text-teal-700" : "bg-sky-100 text-sky-700";
 }
 function tipoLabel(tipo: AgendaItem["tipo"]) {
-  return tipo === "fechado" ? "Fechado" : tipo === "negociacao" ? "Negociação" : tipo === "atividade" ? "Tarefa" : "Google";
+  return tipo === "fechado" ? "Fechado" : tipo === "negociacao" ? "Negociação" : tipo === "atividade" ? "Tarefa (lead)" : tipo === "followup_cliente" ? "Follow-up cliente" : "Google";
 }
 
 export default function AgendaPage() {
@@ -93,10 +93,11 @@ export default function AgendaPage() {
     return map;
   }, [todos]);
 
-  function estadoDia(items: AgendaItem[]): "fechada" | "disputa" | "google" | "atividade" | "livre" {
+  function estadoDia(items: AgendaItem[]): "fechada" | "disputa" | "google" | "atividade" | "cliente" | "livre" {
     if (items.some((i) => i.tipo === "fechado")) return "fechada";
     if (items.some((i) => i.tipo === "negociacao")) return "disputa";
     if (items.some((i) => i.tipo === "google")) return "google";
+    if (items.some((i) => i.tipo === "followup_cliente")) return "cliente";
     if (items.some((i) => i.tipo === "atividade")) return "atividade";
     return "livre";
   }
@@ -164,7 +165,8 @@ export default function AgendaPage() {
           <Legenda cor="bg-green-500" label="Livre" />
           <Legenda cor="bg-amber-500" label="Em negociação" />
           <Legenda cor="bg-red-500" label="Fechada (contrato)" />
-          <Legenda cor="bg-indigo-500" label="Tarefa (follow-up)" />
+          <Legenda cor="bg-indigo-500" label="Tarefa de lead" />
+          <Legenda cor="bg-teal-500" label="Follow-up de cliente" />
           <Legenda cor="bg-sky-500" label="Google (externo)" />
           {googleOn === false && (
             <span className="ml-auto rounded-full bg-neutral-100 px-2 py-0.5 text-[11px] text-neutral-500">Google Agenda não configurado</span>
@@ -207,7 +209,7 @@ export default function AgendaPage() {
               const iso = toISODate(new Date(ref.y, ref.m, dia));
               const items = porDia.get(iso) ?? [];
               const estado = items.length ? estadoDia(items) : null;
-              const cor = estado === "fechada" ? "bg-red-50 border-red-200" : estado === "disputa" ? "bg-amber-50 border-amber-200" : estado === "google" ? "bg-sky-50 border-sky-200" : estado === "atividade" ? "bg-indigo-50 border-indigo-200" : estado === "livre" ? "bg-green-50 border-green-200" : "border-transparent";
+              const cor = estado === "fechada" ? "bg-red-50 border-red-200" : estado === "disputa" ? "bg-amber-50 border-amber-200" : estado === "google" ? "bg-sky-50 border-sky-200" : estado === "cliente" ? "bg-teal-50 border-teal-200" : estado === "atividade" ? "bg-indigo-50 border-indigo-200" : estado === "livre" ? "bg-green-50 border-green-200" : "border-transparent";
               const isHoje = iso === hojeISO;
               return (
                 <div key={i} className={`min-h-20 rounded-lg border p-1.5 ${cor}`}>
