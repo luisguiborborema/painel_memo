@@ -15,22 +15,48 @@ const FALLBACK: ServicoConfig[] = SERVICOS.map((s, i) => ({
   created_at: "",
 }));
 
-// Carrega a lista de serviços disponíveis (editável em Config).
+// Cache em memória: a lista de serviços muda raramente, então buscamos uma vez
+// por sessão e reusamos entre navegações/componentes (evita query a cada mount).
+let cache: ServicoConfig[] | null = null;
+let inflight: Promise<ServicoConfig[]> | null = null;
+
+async function fetchServicos(): Promise<ServicoConfig[]> {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from("servicos_config")
+    .select("*")
+    .eq("ativo", true)
+    .order("ordem");
+  return !error && data && data.length > 0 ? (data as ServicoConfig[]) : FALLBACK;
+}
+
+// Chamar após editar a lista em Config para forçar recarga nos próximos usos.
+export function invalidateServicos() {
+  cache = null;
+  inflight = null;
+}
+
 export function useServicos(): { servicos: ServicoConfig[]; loading: boolean } {
-  const [servicos, setServicos] = useState<ServicoConfig[]>(FALLBACK);
-  const [loading, setLoading] = useState(true);
+  const [servicos, setServicos] = useState<ServicoConfig[]>(cache ?? FALLBACK);
+  const [loading, setLoading] = useState(cache === null);
 
   useEffect(() => {
-    const supabase = createClient();
-    supabase
-      .from("servicos_config")
-      .select("*")
-      .eq("ativo", true)
-      .order("ordem")
-      .then(({ data, error }) => {
-        if (!error && data && data.length > 0) setServicos(data as ServicoConfig[]);
+    let ativo = true;
+    if (cache) {
+      setServicos(cache);
+      setLoading(false);
+      return;
+    }
+    if (!inflight) inflight = fetchServicos().then((r) => (cache = r));
+    inflight.then((r) => {
+      if (ativo) {
+        setServicos(r);
         setLoading(false);
-      });
+      }
+    });
+    return () => {
+      ativo = false;
+    };
   }, []);
 
   return { servicos, loading };

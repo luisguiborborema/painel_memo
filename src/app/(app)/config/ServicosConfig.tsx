@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import type { ServicoConfig } from "@/lib/types";
+import { invalidateServicos } from "@/lib/useServicos";
 import { Button, Input, Spinner } from "@/components/ui";
 
 const CORES: { label: string; cls: string }[] = [
@@ -25,6 +26,7 @@ export function ServicosConfig() {
     const { data } = await supabase.from("servicos_config").select("*").order("ordem");
     setServicos((data as ServicoConfig[]) ?? []);
     setLoading(false);
+    invalidateServicos(); // próximos usos do hook recarregam a lista atualizada
   }
   useEffect(() => { carregar(); }, []); // eslint-disable-line
 
